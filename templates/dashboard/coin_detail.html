@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ page_title }} — CryptoWatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--border:#1e2d45;
+    --accent:#00d4ff;--green:#10b981;--red:#ef4444;--yellow:#f59e0b;
+    --text:#e2e8f0;--muted:#64748b;--mono:'Space Mono',monospace;--sans:'Inter',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh}
+  body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+  .wrapper{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:24px}
+  .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:0.82rem;text-decoration:none;margin-bottom:24px;transition:color 0.2s}
+  .back-link:hover{color:var(--accent)}
+  .coin-header{display:flex;align-items:center;gap:16px;margin-bottom:28px}
+  .coin-header img{width:56px;height:56px;border-radius:50%}
+  .coin-header-info h1{font-size:1.8rem;font-weight:700}
+  .coin-header-info .sym{font-family:var(--mono);font-size:0.9rem;color:var(--muted)}
+  .price-big{font-family:var(--mono);font-size:2.5rem;font-weight:700;color:var(--accent)}
+  .change-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;font-family:var(--mono);font-size:0.9rem;font-weight:700;margin-left:12px;vertical-align:middle}
+  .chip-pos{background:rgba(16,185,129,0.12);color:var(--green)}
+  .chip-neg{background:rgba(239,68,68,0.12);color:var(--red)}
+  .chip-neu{background:rgba(100,116,139,0.12);color:var(--muted)}
+
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:28px}
+  .s-card{background:var(--surface);padding:16px 20px}
+  .s-label{font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:6px}
+  .s-val{font-family:var(--mono);font-size:1rem;font-weight:700}
+
+  .chart-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px}
+  .chart-title{font-family:var(--mono);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+  .chart-title::before{content:'';display:block;width:3px;height:12px;background:var(--accent);border-radius:2px}
+  .chart-wrap{position:relative;height:300px}
+
+  .history-table{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  table{width:100%;border-collapse:collapse}
+  thead th{padding:12px 16px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border);text-align:left}
+  thead th:not(:first-child){text-align:right}
+  tbody tr{border-bottom:1px solid var(--border);transition:background 0.15s}
+  tbody tr:last-child{border-bottom:none}
+  tbody tr:hover{background:var(--surface2)}
+  tbody td{padding:12px 16px;font-size:0.83rem}
+  tbody td:not(:first-child){text-align:right;font-family:var(--mono)}
+  .pill{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:12px;font-size:0.75rem;font-weight:700}
+  .pill.positive{background:rgba(16,185,129,0.12);color:var(--green)}
+  .pill.negative{background:rgba(239,68,68,0.12);color:var(--red)}
+  .pill.neutral{background:rgba(100,116,139,0.12);color:var(--muted)}
+  .muted{color:var(--muted)}
+  @media(max-width:700px){.stats-row{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <a href="/" class="back-link">← Back to Dashboard</a>
+
+  <!-- Coin Header -->
+  <div class="coin-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+    <div style="display:flex;align-items:center;gap:16px">
+      {% if coin.logo_url %}
+      <img src="{{ coin.logo_url }}" alt="{{ coin.symbol }}" style="width:56px;height:56px;border-radius:50%">
+      {% endif %}
+      <div class="coin-header-info">
+        <h1>{{ coin.name }}
+          {% if latest %}
+            <span class="change-chip {% if latest.change_24h_pct > 0 %}chip-pos{% elif latest.change_24h_pct < 0 %}chip-neg{% else %}chip-neu{% endif %}">
+              {% if latest.change_24h_pct > 0 %}▲{% elif latest.change_24h_pct < 0 %}▼{% else %}–{% endif %}
+              {{ latest.change_24h_pct|floatformat:2 }}%
+            </span>
+          {% endif %}
+        </h1>
+        <div class="sym">{{ coin.symbol }} · {{ coin.slug }}</div>
+      </div>
+    </div>
+    <!-- CSV Download Buttons -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a href="/export/{{ coin.symbol }}/csv/?limit=200"
+         style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:rgba(0,212,255,0.1);border:1px solid var(--accent);color:var(--accent);border-radius:7px;text-decoration:none;font-size:0.82rem;font-weight:500;transition:all 0.2s"
+         onmouseover="this.style.background='rgba(0,212,255,0.2)'"
+         onmouseout="this.style.background='rgba(0,212,255,0.1)'">
+        ⬇ Download {{ coin.symbol }} CSV
+      </a>
+      <a href="/export/all/csv/"
+         style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;background:rgba(124,58,237,0.1);border:1px solid #7c3aed;color:#a78bfa;border-radius:7px;text-decoration:none;font-size:0.82rem;font-weight:500;transition:all 0.2s"
+         onmouseover="this.style.background='rgba(124,58,237,0.2)'"
+         onmouseout="this.style.background='rgba(124,58,237,0.1)'">
+        ⬇ All Coins Snapshot CSV
+      </a>
+    </div>
+  </div>
+
+  {% if latest %}
+  <div style="margin-bottom:24px">
+    <span class="price-big">${{ latest.price_usd }}</span>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="s-card">
+      <div class="s-label">24h High</div>
+      <div class="s-val" style="color:var(--green)">${{ latest.high_24h|default:"—" }}</div>
+    </div>
+    <div class="s-card">
+      <div class="s-label">24h Low</div>
+      <div class="s-val" style="color:var(--red)">${{ latest.low_24h|default:"—" }}</div>
+    </div>
+    <div class="s-card">
+      <div class="s-label">Market Cap</div>
+      <div class="s-val">${{ latest.market_cap_usd|floatformat:0 }}</div>
+    </div>
+    <div class="s-card">
+      <div class="s-label">Volume 24h</div>
+      <div class="s-val">${{ latest.volume_24h_usd|floatformat:0 }}</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Chart -->
+  <div class="chart-panel">
+    <div class="chart-title">Price History (last {{ snapshots|length }} snapshots)</div>
+    <div class="chart-wrap">
+      <canvas id="priceChart"></canvas>
+    </div>
+  </div>
+
+  <!-- History Table -->
+  <div class="history-table">
+    <table>
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Price (USD)</th>
+          <th>24h Change</th>
+          <th>7d Change</th>
+          <th>Volume</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for snap in snapshots reversed %}
+        <tr>
+          <td class="muted">{{ snap.scraped_at|date:"d M H:i" }}</td>
+          <td>${{ snap.price_usd }}</td>
+          <td>
+            {% if snap.change_24h_pct is not None %}
+              <span class="pill {{ snap.change_24h_color }}">
+                {% if snap.change_24h_pct > 0 %}▲{% elif snap.change_24h_pct < 0 %}▼{% else %}–{% endif %}
+                {{ snap.change_24h_pct|floatformat:2 }}%
+              </span>
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+          <td>
+            {% if snap.change_7d_pct is not None %}
+              <span class="pill {% if snap.change_7d_pct > 0 %}positive{% elif snap.change_7d_pct < 0 %}negative{% else %}neutral{% endif %}">
+                {{ snap.change_7d_pct|floatformat:2 }}%
+              </span>
+            {% else %}<span class="muted">—</span>{% endif %}
+          </td>
+          <td>${{ snap.volume_24h_usd|floatformat:0 }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">No history yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+// Build chart data from Django template context
+const labels = [{% for s in snapshots %}"{{ s.scraped_at|date:'d M H:i' }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+const prices = [{% for s in snapshots %}{{ s.price_usd }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+const isUp = prices.length < 2 || prices[prices.length-1] >= prices[0];
+const lineColor = isUp ? '#10b981' : '#ef4444';
+
+const ctx = document.getElementById('priceChart').getContext('2d');
+
+const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+gradient.addColorStop(0, isUp ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)');
+gradient.addColorStop(1, 'rgba(0,0,0,0)');
+
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [{
+      label: '{{ coin.symbol }} Price (USD)',
+      data: prices,
+      borderColor: lineColor,
+      backgroundColor: gradient,
+      borderWidth: 2,
+      pointRadius: prices.length > 20 ? 0 : 3,
+      pointHoverRadius: 5,
+      pointBackgroundColor: lineColor,
+      fill: true,
+      tension: 0.3,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { intersect: false, mode: 'index' },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#1a2235',
+        borderColor: '#1e2d45',
+        borderWidth: 1,
+        titleColor: '#64748b',
+        bodyColor: '#e2e8f0',
+        callbacks: {
+          label: ctx => ' $' + parseFloat(ctx.raw).toLocaleString('en-US', {minimumFractionDigits:2})
+        }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(30,45,69,0.8)' },
+        ticks: {
+          color: '#64748b', font: { family: "'Space Mono'", size: 10 },
+          maxTicksLimit: 8, maxRotation: 0,
+        }
+      },
+      y: {
+        position: 'right',
+        grid: { color: 'rgba(30,45,69,0.8)' },
+        ticks: {
+          color: '#64748b', font: { family: "'Space Mono'", size: 10 },
+          callback: v => '$' + parseFloat(v).toLocaleString('en-US', {maximumFractionDigits:2})
+        }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>

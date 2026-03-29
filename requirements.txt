@@ -1,0 +1,9 @@
+Django==4.2.9
+requests==2.31.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
+django-apscheduler==0.6.2
+djangorestframework==3.14.0
+django-cors-headers==4.3.1
+python-dotenv==1.0.0
+Pillow==10.2.0
